@@ -4,7 +4,7 @@
 
 int main(int argc, char *argv[])
 {
-	if(argc != 8) {
+	if(argc != 9) {
 		printf("Argumentos invalidos %d\n", argc);
 		exit(1);
 	}
@@ -15,6 +15,7 @@ int main(int argc, char *argv[])
 	unsigned int W = atoi(argv[4]);
 	unsigned int tc = atoi(argv[5]);
 	unsigned int ts = atoi(argv[6]);
+	unsigned int seed = atoi(argv[7]);
 
 	long t = atol(argv[7]);
 	long tp = (N * tc) + tc;
@@ -25,6 +26,7 @@ int main(int argc, char *argv[])
 	p = malloc(S*sizeof(char));
 
 	int j, pos;
+	srand(seed);
 	for(;;){
 		long tt = time(NULL);
 		if(time(NULL) >= tf) {

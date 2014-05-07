@@ -64,18 +64,21 @@ public class MemoryAnalizer {
 		int S = (100*1024*1024);
 		int tc = 10;
 		int ts = 100;
+		int seed = 42;
 		
-		System.out.print("Entre com um valor para N...:");
+		System.out.print("Entre com um valor para N.....:");
 		N = s.nextInt();
-		System.out.print("Entre com um valor para W...:");
+		System.out.print("Entre com um valor para W.....:");
 		W = s.nextInt();
-		System.out.print("Entre com um valor para S...:");
-		S = s.nextInt();
-		System.out.print("Entre com um valor para tc..:");
+		//System.out.print("Entre com um valor para S...:");
+		//S = s.nextInt();
+		System.out.print("Entre com um valor para tc....:");
 		tc = s.nextInt();
-		System.out.print("Entre com um valor para ts:..");
+		System.out.print("Entre com um valor para ts:...:");
+		ts = s.nextInt();
+		System.out.print("Entre com um valor para seed:.:");
 		ts = s.nextInt();
 		
-		pc.setParams(N, W, S, tc, ts);
+		pc.setParams(N, W, S, tc, ts, seed);
 	}
 }

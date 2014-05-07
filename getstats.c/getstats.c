@@ -5,12 +5,11 @@
 struct mystats {
 	char cpusystem[20];
 	char cpuuser[20];
+	long long cputotal;
+	long int memused; //KB
 	char pgpgin[20];
 	char pgpgout[20];
 };
-
-char ** explode (char sep, char *str, int *pcount);
-char *trim (char *s);
 
 int main(int argc, char *argv[]) {
 
@@ -22,102 +21,107 @@ int main(int argc, char *argv[]) {
     FILE *file, *fileout;
     char line[256];
     char *pos;
-    char **toks;
-	int i = 0, j = 0;
-	int count = 0;
+	int time = 0, i = 0, j = 0;
+	long long int a[7];
 
 	struct mystats stats;
 
 	fileout = fopen(argv[1], "w+");
+	fprintf (fileout, "\"Time\";\"CPU.user\";\"CPU.kernel\";\"CPU.total\";\"MEM.used\";\"Page.in\";\"Page.out\"\n");
 
 	for (;;) {
 		file = fopen("/proc/stat", "r");
 		fgets(line, sizeof(line), file);
 
 		if (strlen(line) > 0) {
-			toks = explode(' ', line, &count);
-			for (i=0; i < (count+1); i++) {
-				if (i == 2 || i == 4) {
-					if (i == 2)
-						strcpy(stats.cpusystem, trim(toks[i]));
-					else
-						strcpy(stats.cpuuser, trim(toks[i]));
-				}
-			}
+			char *tok, *saved;
+			tok = strtok_r(line, " ", &saved);
+			tok = strtok_r(NULL, " ", &saved); //User
+			a[0] = atoll(tok);
+			strcpy(stats.cpuuser, tok);
+
+			tok = strtok_r(NULL, " ", &saved);
+			a[1] = atoll(tok);
+			tok = strtok_r(NULL, " ", &saved); //System
+			a[2] = atoll(tok);
+			strcpy(stats.cpusystem, tok);
+
+			tok = strtok_r(NULL, " ", &saved);
+			a[3] = atoll(tok);
+
+			tok = strtok_r(NULL, " ", &saved);
+			a[4] = atoll(tok);
+			tok = strtok_r(NULL, " ", &saved);
+			a[5] = atoll(tok);
+			tok = strtok_r(NULL, " ", &saved);
+			a[6] = atoll(tok);
+
+			stats.cputotal = a[0]+a[1]+a[2]+a[3]+a[4]+a[5]+a[6];
 		}
 
-		free(toks);
 		fclose(file);
 
-		j = 0;
+		i = 0;
+		file = fopen("/proc/meminfo", "r");
+		long int memtotal=0, memfree=0, swaptotal=0, swapfree=0;
+		while(fgets(line, sizeof(line), file) != NULL) {
+			if (i == 0 || i == 1 || i == 17 || i == 18) {
+				char *tok, *saved;
+				tok = strtok_r(line, " ", &saved);
+				tok = strtok_r(NULL, " ", &saved);
+				if ((pos = strchr(tok, '\n')) != NULL)
+					*pos = '\0';
+
+				if (i == 0) {//mem total
+					memtotal = atol(tok);
+				}
+				else if (i == 1) {//mem free
+					memfree = atol(tok);
+				}
+				else if (i == 17) {//swap total
+					swaptotal = atol(tok);
+				}
+				else {//swap free
+					swapfree = atol(tok);
+					stats.memused = (memtotal - memfree) +
+							(swaptotal - swapfree);
+				}
+			}
+
+			i++;
+		}
+
+		fclose(file);
+
+		i = 0;
 		file = fopen("/proc/vmstat", "r");
 		while(fgets(line, sizeof(line), file) != NULL) {
-			if(j == 29 || j == 30) {
-				toks = explode(' ', line, &count);
-				for (i=0; i < (count+1); i++) {
-					if(i == 1) {
-						if (j == 29)
-							strcpy(stats.pgpgin, trim(toks[i]));
-						else
-							strcpy(stats.pgpgout, trim(toks[i]));
-					}
+			if (i == 36 || i == 37) {
+				char *tok, *saved;
+				tok = strtok_r(line, " ", &saved);
+				tok = strtok_r(NULL, " ", &saved);
+				if ((pos = strchr(tok, '\n')) != NULL)
+					*pos = '\0';
+
+				if (i == 36) {
+					strcpy(stats.pgpgin, tok);
+				}
+				else {
+					strcpy(stats.pgpgout, tok);
 				}
 			}
 
-			j++;
+			i++;
 		}
 
-		free(toks);
 		fclose(file);
-		fprintf (fileout, "%s;%s;%s;%s\n", stats.cpusystem,
-				stats.cpuuser, stats.pgpgin, stats.pgpgout);
+
+		time++;
+		fprintf (fileout, "%i;%s;%s;%Li;%li;%s;%s\n", time,
+				stats.cpuuser, stats.cpusystem, stats.cputotal,
+				stats.memused, stats.pgpgin, stats.pgpgout);
 		fflush(fileout);
 
 		sleep(1);
     }
-}
-
-char ** explode (char sep, char *str, int *pcount)
-{
- 	char **arr_str = (char**) malloc(0);
- 	int count = 0;
- 	char *cp = str;
- 	char *apos = str;
-
- 	while ((cp = strchr(cp, sep)) != NULL) {
-		count++;
-
-		arr_str = (char **)realloc(arr_str, count*sizeof(char*));
-		arr_str[count-1] = (char *)realloc(arr_str[count-1], cp - apos);
-		strncpy(arr_str[count-1], apos, cp - apos);
-
-		cp +=sizeof(char);
-		apos = cp;
- 	}
-
- 	arr_str = (char **)realloc(arr_str, (count+1)*sizeof(char*));
- 	arr_str[count] = (char *)realloc(arr_str[count], &str[strlen(str)] - apos);
- 	strncpy(arr_str[count], apos, &str[strlen(str)] - apos);
-
-	*pcount = count;
- 	return arr_str;
-}
-
-char *trim (char *s)
-{
-	int i = 0;
-	int j = strlen ( s ) - 1;
-	int k = 0;
-	while ( isspace ( s[i] ) && s[i] != '\0' )
-		i++;
-
-	while ( isspace ( s[j] ) && j >= 0 )
-		j--;
-
-	while ( i <= j )
-		s[k++] = s[i++];
-
-	s[k] = '\0';
-
-	return s;
 }
